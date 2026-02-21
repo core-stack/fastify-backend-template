@@ -1,0 +1,72 @@
+---
+description: Global conventions for snipet-core - stack, architecture, naming, docs
+alwaysApply: true
+---
+
+# Snipet Core - Global Conventions
+
+Stack: **Fastify** + **Prisma** + **TypeScript**. **Functional architecture** — no classes, only functions.
+
+## Factory Pattern
+
+Controllers, services, and repositories use the **factory pattern**: functions that receive dependencies and return an object with methods. Dependencies are injected, not imported globally.
+
+## Folder Structure
+
+- **controllers/** — Fastify routes, one controller per domain
+- **schemas/** — shared Zod schemas (validation + Swagger)
+- **services/** — business logic as factories
+- **repositories/** — one file per Prisma model (e.g. `user.repository.ts`)
+- **jobs/** — queue processors
+- **queues/** — queue definitions and connection
+- **schedulers/** — scheduled jobs
+- **plugins/** — Fastify plugins
+
+Every folder has an `index.ts` that registers/exports its contents.
+
+## Naming
+
+- **Functions**: lowerCamelCase
+- **Files**: kebab-case (e.g. `user-repository.ts`, `users-v1.controller.ts`)
+- **Constants**: UPPER_SNAKE or camelCase depending on context
+
+## Path Alias
+
+Use `@/` for `src/`: `import { x } from '@/services/user.service'`
+
+## Documentation
+
+Add **JSDoc** to all exported functions:
+
+```typescript
+/**
+ * Fetches a user by ID.
+ * @param id - User UUID
+ * @returns Result with user or NotFound error
+ */
+async function findById(id: string): Promise<Result<User, NotFoundError>> {
+  // ...
+}
+```
+
+## Testing
+
+Always add tests for new code.
+
+## Logging
+
+Use the universal logger from `@/logger.js`. Format is **readable** (colored by level, timestamp, context) — not raw JSON. Logger is **injected via deps** in services, repositories, and controllers. Fastify uses `createFastifyLogger()` as `loggerInstance`. See `logger.mdc` for details.
+
+## Custom Errors
+
+Custom errors must have `message` and a unique `code`:
+
+```typescript
+class NotFoundError extends Error {
+  code = "USER_NOT_FOUND";
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+```

@@ -1,0 +1,39 @@
+---
+description: Zod schema conventions for validation and Swagger
+globs: src/schemas/**/*.ts
+alwaysApply: false
+---
+
+# Schemas
+
+- Use **Zod** only for validation
+- Schemas live in shared `schemas/` folder
+- Integrate with Swagger for auto-generated docs
+- **DTOs derived from root entity**: define a base entity schema, then build DTOs with `pick`, `partial`, `omit`, `extend`, etc.
+
+```typescript
+// schemas/user.schema.ts
+import { z } from "zod";
+
+/** Root entity schema - source of truth for all user DTOs */
+export const userSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  email: z.string().email(),
+  createdAt: z.coerce.date(),
+});
+
+/** Create DTO - pick required fields from entity */
+export const createUserSchema = userSchema.pick({ name: true, email: true });
+
+/** Update DTO - partial of updatable fields */
+export const updateUserSchema = userSchema.pick({ name: true, email: true }).partial();
+
+/** Response DTO - omit internal/sensitive fields */
+export const userResponseSchema = userSchema.omit({ createdAt: true });
+
+/** DTO with extra computed fields - extend from pick */
+export const userWithStatsSchema = userSchema.pick({ id: true, name: true }).extend({
+  documentCount: z.number(),
+});
+```

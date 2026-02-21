@@ -1,0 +1,19 @@
+---
+description: Queue job processor conventions
+globs: src/jobs/**/*.ts
+alwaysApply: false
+---
+
+# Jobs
+
+- Signature: `(job: Job) => void | Promise<void>`
+- Jobs must go through a **service** — do not call repositories directly
+- **Logger**: receive `logger: Logger` via closure or deps; use for job start/end and error traces
+
+```typescript
+// jobs/index-document.job.ts
+export async function indexDocumentJob(job: Job): Promise<void> {
+  const result = await documentService.index(job.data);
+  if (!result.ok) throw result.error;
+}
+```

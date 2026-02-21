@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+*.log
+.DS_Store
+.pnpm-store
+*.md
+.cursor
+.vscode
+coverage
+*.test.ts
+*.spec.ts
+__tests__
+.playwright

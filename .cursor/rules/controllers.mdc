@@ -1,0 +1,51 @@
+---
+description: Fastify controller conventions
+globs: src/controllers/**/*.ts
+alwaysApply: false
+---
+
+# Controllers
+
+- **Factory pattern**: controllers are factories that receive `app` and optional deps, then register routes
+- Route pattern: `/api/v1/some-route`
+- Controller name must include `V1` (e.g. `createUsersV1Controller`)
+- Central registrar in `controllers/index.ts` applies all controllers
+- Use path alias `@/` for imports
+- **Use `fastify-type-provider-zod`**: put Zod schemas directly in `schema` (querystring, params, body, response) instead of manual JSON Schema. Validation and types come from the schemas in `@/schemas/`.
+- **Logger**: receive `logger: Logger` via deps; use `logger.error()` when handling Result errors (e.g. 500, unexpected failures).
+
+```typescript
+// controllers/users-v1.controller.ts
+import type { FastifyInstance } from "fastify";
+import type { Logger } from "@/logger.js";
+import { createUserSchema, userResponseSchema } from "@/schemas/index.js";
+import { z } from "zod";
+
+interface UserControllerV1Deps {
+  service: UserService;
+  logger: Logger;
+}
+
+export function createUsersV1Controller(app: FastifyInstance, deps: UserControllerV1Deps) {
+  const { service, logger } = deps;
+  
+  app.route({
+    method: "GET",
+    url: "/api/v1/users/:id",
+    schema: {
+      params: z.object({ id: z.string().uuid() }),
+      response: { 200: userResponseSchema, 404: errorResponseSchema },
+    },
+    handler: async (req, reply) => {
+      const result = await service.findById(req.params.id);
+      return result.match(
+        (user) => reply.send(user),
+        (err) => {
+          logger.error("Error fetching user", { err });
+          return reply.status(404).send({ error: "Not found" });
+        }
+      );
+    },
+  });
+}
+```

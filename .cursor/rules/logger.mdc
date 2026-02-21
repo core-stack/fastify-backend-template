@@ -1,0 +1,43 @@
+---
+description: Universal logger conventions
+globs: src/logger.ts, src/**/*.ts
+alwaysApply: false
+---
+
+# Logger
+
+- **Single source**: use the logger from `@/logger.js` — `createLogger` and `createFastifyLogger`
+- **Injection**: logger is **injected via deps** in services, repositories, and controllers — never imported/created directly in those layers
+- **Context**: always use `createLogger({ context: "..." })` for domain-specific loggers (e.g. `"server"`, `"worker"`, `"cron"`, `"repository"`)
+- **Levels**: `debug`, `info`, `warn`, `error` — use `debug` for traces, `info` for milestones, `warn` for recoverable issues, `error` for failures
+- **Fastify**: use `createFastifyLogger()` as `loggerInstance` so Fastify uses the same colored, readable format
+
+```typescript
+// logger.ts - createLogger returns instance with context
+const logger = createLogger({ context: "worker" });
+logger.info("Queue workers started");
+
+// child for sub-context
+const jobLogger = logger.child("job-processor");
+jobLogger.debug("Processing job", { jobId: "123" });
+```
+
+```typescript
+// Injected in services/repositories/controllers
+export function createUserService(deps: { userRepository: UserRepository; logger: Logger }) {
+  const { logger } = deps;
+  return {
+    async findById(id: string) {
+      logger.debug("Finding user by ID", { id });
+      return deps.userRepository.findById(id);
+    },
+  };
+}
+```
+
+```typescript
+// Fastify - server uses createFastifyLogger
+const app = Fastify({
+  loggerInstance: createFastifyLogger({ context: "server" }),
+});
+```

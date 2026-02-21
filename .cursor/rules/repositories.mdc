@@ -1,0 +1,48 @@
+---
+description: Prisma repository conventions
+globs: src/repositories/**/*.ts
+alwaysApply: false
+---
+
+# Repositories
+
+- **Factory pattern**: repositories are factories that receive Prisma client (or deps) and return an object with methods
+- One file per Prisma model: `user.repository.ts`, `knowledge.repository.ts`
+- Use standard Prisma API (avoid raw SQL unless necessary)
+- `index.ts` exports all repositories
+- **Schema boundaries**: repositories **only** receive and return schema/DTO types — never Prisma types directly. Internally use Prisma; externally expose only typed schemas.
+- **Result/Either**: repositories return `Result<T, E>` (neverthrow). Wrap null/not-found in `err()`, success in `ok()`. Catch Prisma errors and map to domain errors (e.g. P2002 → ConflictError).
+- **Logger**: receive `logger: Logger` via deps; use for debug traces (e.g. DB operations) and error context.
+
+```typescript
+// repositories/user.repository.ts
+import type { Result } from "neverthrow";
+import { err, ok } from "neverthrow";
+import type { Logger } from "@/logger.js";
+import type { UserResponse, CreateUserInput } from "@/schemas/index.js";
+import { UserNotFoundError, UserConflictError, DbError } from "@/errors/index.js";
+
+export function createUserRepository(deps: { prisma: PrismaClient; logger: Logger }) {
+  return {
+    async findById(id: string): Promise<Result<UserResponse, UserNotFoundError | DbError>> {
+      try {
+        const row = await deps.prisma.user.findUnique({ where: { id } });
+        return row ? ok(row) : err(new UserNotFoundError(`User ${id} not found`));
+      } catch (e) {
+        return err(toDbError(e));
+      }
+    },
+    async create(data: CreateUserInput): Promise<Result<UserResponse, UserConflictError | DbError>> {
+      try {
+        const row = await deps.prisma.user.create({ data });
+        return ok(row);
+      } catch (e) {
+        if (isPrismaConflict(e)) return err(new UserConflictError("Email already exists"));
+        return err(toDbError(e));
+      }
+    },
+  };
+}
+
+function toDbError(e: unknown): DbError { ... }
+```

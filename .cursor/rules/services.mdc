@@ -1,0 +1,35 @@
+---
+description: Service layer - factories with Result/Either
+globs: src/services/**/*.ts
+alwaysApply: false
+---
+
+# Services
+
+- **Factory pattern**: services are factories with injected dependencies
+- Return an object with methods
+- Use **Result** / **Either** for return types
+- Use `throw` only for unexpected errors, not normal flow
+- **Schema boundaries**: services **only** receive and return schema/DTO types — never Prisma types. Depend on repositories that expose schema types.
+- **Logger**: receive `logger: Logger` via deps; use `logger.debug()` for operation traces, `logger.error()` for unexpected errors.
+
+```typescript
+// services/user.service.ts
+import type { Logger } from "@/logger.js";
+import type { UserResponse, CreateUserInput } from "@/schemas/index.js";
+
+export function createUserService(deps: { userRepository: UserRepository; logger: Logger }) {
+  const { logger } = deps;
+  return {
+    async findById(id: string): Promise<Result<UserResponse, NotFoundError>> {
+      logger.debug("Finding user by ID", { id });
+      const result = await deps.userRepository.findById(id);
+      return result ? ok(result) : err(notFound("User"));
+    },
+    async create(data: CreateUserInput): Promise<Result<UserResponse, ConflictError>> {
+      // ...
+      return ok(created);
+    },
+  };
+}
+```
