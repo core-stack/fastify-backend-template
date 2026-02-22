@@ -1,0 +1,15 @@
+enum VerificationType {
+  ACTIVE_ACCOUNT
+  RESET_PASSWORD
+}
+
+model VerificationToken {
+  type       VerificationType
+  token      String  @unique @default(uuid())
+  expires    DateTime
+
+  userId             String  @map("user_id")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verification_tokens")
+}
