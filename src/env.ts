@@ -42,6 +42,54 @@ const envSchema = z.object({
    * @example "my-master-password"
    */
   ENCRYPTION_MASTER_PASSWORD: z.string().min(8).default("password"),
+
+  /**
+   * The JWT secret.
+   * @example "my-jwt-secret"
+   */
+  JWT_SECRET: z.string(),
+
+  /**
+   * The JWT access token duration.
+   * @default 5 minutes
+   */
+  JWT_ACCESS_TOKEN_DURATION: z.coerce.number().default(60 * 5 * 1000), // 5 min
+
+  /**
+   * The JWT refresh token duration.
+   * @default 30 days
+   */
+  JWT_REFRESH_TOKEN_DURATION: z.coerce.number().default(60 * 60 * 24 * 30 * 1000), // 30 days
+
+  /**
+   * The active account token expiration.
+   * @default 1 hour
+   */
+  ACTIVE_ACCOUNT_TOKEN_EXPIRES: z.coerce.number().default(60 * 60 * 1000), // 1h
+
+  /**
+   * The reset password token expiration.
+   * @default 1 hour
+   */
+  RESET_PASSWORD_TOKEN_EXPIRES: z.coerce.number().default(60 * 60 * 1000), // 1h
+
+  /**
+   * Whether to allow creating accounts.
+   * @default true
+   */
+  ALLOW_CREATE_ACCOUNT: z.coerce.boolean().default(true),
+
+  /**
+   * The Redis URL.
+   * @example "redis://localhost:6379"
+   */
+  REDIS_URL: z.url().optional(),
+
+  /**
+   * The cookie secret.
+   * @example "supersecret"
+   */
+  COOKIE_SECRET: z.string().default("supersecret"),
 });
 export type Env = z.infer<typeof envSchema>;
 

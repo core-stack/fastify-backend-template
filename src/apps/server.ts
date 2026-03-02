@@ -1,16 +1,14 @@
 import { createRepositories } from "@/core/repositories/index.js";
 import { createServices, Services } from "@/core/services/index.js";
 import { env } from "@/env.js";
+import { acquirePrismaClient, releasePrismaClient } from "@/infra/prisma.js";
 import { createLogger, Logger, LoggerOptions } from "@/logger.js";
-import cors from "@fastify/cors";
-import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
+import { errorHandler } from "@/server/error-handler.js";
 import Fastify from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import {
-    jsonSchemaTransform,
-    serializerCompiler,
-    validatorCompiler,
+  serializerCompiler,
+  validatorCompiler,
 } from "fastify-type-provider-zod";
 import z from "zod";
 import { registerControllers } from "../server/controllers/index.js";
@@ -64,37 +62,20 @@ export async function bootstrapServer() {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  await app.register(cors, { origin: true });
-
-  await app.register(swagger, {
-    openapi: {
-      openapi: "3.0.0",
-      info: {
-        title: "Snipet Core API",
-        description: "API documentation for Snipet Core",
-        version: "1.0.0",
-      },
-    },
-    transform: jsonSchemaTransform,
-  });
-
-  await app.register(swaggerUi, {
-    routePrefix: "/swagger",
-    uiConfig: {
-      docExpansion: "list",
-      deepLinking: true,
-    },
-  });
-
   await registerPlugins(app);
+  app.setErrorHandler(errorHandler);
+
   const logger = createLogger({ context: "server" });
-  const repositories = createRepositories({ prisma: app.prisma, logger: logger.child("repository") });
+
+  const prisma = await acquirePrismaClient("server");
+  app.addHook("onClose", () => releasePrismaClient("server"));
+
+  const repositories = createRepositories({ prisma, logger: logger.child("repository") });
   const services = createServices({ repositories, logger: logger.child("service") });
   
   await registerRoutes(app, { services, logger: logger.child("routes") });
 
-  const port = env.PORT;
-  await app.listen({ port, host: "0.0.0.0" });
+  await app.listen({ port: env.PORT, host: "0.0.0.0" });
 
   return app;
 }
